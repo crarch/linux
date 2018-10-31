@@ -44,6 +44,9 @@ endif
 
 all-y			:= vmlinux
 all-$(CONFIG_SYS_SUPPORTS_ZBOOT)+= vmlinuz
+all-$(CONFIG_EFI_STUB) 	+= vmlinuz.efi
+
+vmlinuz.efi: vmlinuz
 
 #
 # GCC uses -G0 -mabicalls -fpic as default.  We don't want PIC in the kernel
@@ -135,6 +138,7 @@ boot-y := vmlinux.bin
 # compressed boot image targets (arch/loongarch/boot/compressed/)
 bootz-y			:= vmlinuz
 bootz-y			+= vmlinuz.bin
+bootz-$(CONFIG_EFI_STUB)+= vmlinuz.efi
 
 all:	$(all-y) $(KBUILD_DTBS)
 

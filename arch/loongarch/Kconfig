@@ -557,6 +557,14 @@ config EFI
 	  resultant kernel should continue to boot on existing non-EFI
 	  platforms.
 
+config EFI_STUB
+	bool "EFI stub support"
+	default y
+	depends on EFI
+	help
+	  This kernel feature allows a vmlinuz.efi to be loaded directly
+	  by EFI firmware without the use of a bootloader.
+
 config SMP
 	bool "Multi-Processing support"
 	depends on SYS_SUPPORTS_SMP
