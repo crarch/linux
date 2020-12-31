@@ -157,4 +157,7 @@ typedef enum {
 #define ls7a_writeq(val, addr)		ls7a_write_type(val, addr, uint64_t)
 #define ls7a_write(val, addr)		ls7a_write_type(val, addr, uint64_t)
 
+void enable_gpe_wakeup(void);
+void enable_pci_wakeup(void);
+
 #endif /* __ASM_MACH_LOONGSON64_LOONGSON_H */

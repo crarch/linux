@@ -481,6 +481,10 @@ static void __init arch_mem_init(char **cmdline_p)
 
 	dma_contiguous_reserve(PFN_PHYS(max_low_pfn));
 
+	/* Reserve for hibernation. */
+	memblock_reserve(__pa_symbol(&__nosave_begin),
+		__pa_symbol(&__nosave_end) - __pa_symbol(&__nosave_begin));
+
 	memblock_dump_all();
 
 	early_memtest(PFN_PHYS(ARCH_PFN_OFFSET), PFN_PHYS(max_low_pfn));

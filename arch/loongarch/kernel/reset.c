@@ -14,6 +14,7 @@
 #include <asm/idle.h>
 #include <asm/loongarchregs.h>
 #include <asm/reboot.h>
+#include <loongson.h>
 
 static void machine_hang(void)
 {
@@ -49,6 +50,7 @@ void machine_power_off(void)
 	preempt_disable();
 	smp_send_stop();
 #endif
+	enable_pci_wakeup();
 	pm_power_off();
 }
 

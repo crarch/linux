@@ -106,6 +106,9 @@ head-y := arch/loongarch/kernel/head.o
 
 libs-y += arch/loongarch/lib/
 
+# suspend and hibernation support
+drivers-$(CONFIG_PM)	+= arch/loongarch/power/
+
 ifeq ($(KBUILD_EXTMOD),)
 prepare: vdso_prepare
 vdso_prepare: prepare0

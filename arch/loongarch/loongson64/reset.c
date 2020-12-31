@@ -16,7 +16,6 @@
 #include <asm/delay.h>
 #include <asm/idle.h>
 #include <asm/reboot.h>
-#include <boot_param.h>
 
 static void loongson_restart(void)
 {
