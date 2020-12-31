@@ -1,3 +1,52 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config CMDLINE_BOOL
+	bool "Built-in kernel command line"
+	default n
+	help
+	  For most systems, it is firmware or second stage bootloader that
+	  by default specifies the kernel command line options.  However,
+	  it might be necessary or advantageous to either override the
+	  default kernel command line or add a few extra options to it.
+	  For such cases, this option allows you to hardcode your own
+	  command line options directly into the kernel.  For that, you
+	  should choose 'Y' here, and fill in the extra boot arguments
+	  in CONFIG_CMDLINE.
+
+	  The built-in options will be concatenated to the default command
+	  line if CMDLINE_OVERRIDE is set to 'N'. Otherwise, the default
+	  command line will be ignored and replaced by the built-in string.
+
+	  Most LoongArch systems will normally expect 'N' here and rely upon
+	  the command line from the firmware or the second-stage bootloader.
+
+config CMDLINE
+	string "Default kernel command string"
+	depends on CMDLINE_BOOL
+	default ""
+	help
+	  On some platforms, there is currently no way for the boot loader to
+	  pass arguments to the kernel.  For these platforms, and for the cases
+	  when you want to add some extra options to the command line or ignore
+	  the default command line, you can supply some command-line options at
+	  build time by entering them here.  In other cases you can specify
+	  kernel args so that you don't have to set them up in board prom
+	  initialization routines.
+
+	  For more information, see the CMDLINE_BOOL and CMDLINE_OVERRIDE
+	  options.
+
+config CMDLINE_OVERRIDE
+	bool "Built-in command line overrides firmware arguments"
+	default n
+	depends on CMDLINE_BOOL
+	help
+	  By setting this option to 'Y' you will have your kernel ignore
+	  command line arguments from firmware or second stage bootloader.
+	  Instead, the built-in command line will be used exclusively.
+
+	  Normally, you will choose 'N' here.
+
 choice
 	prompt "Choose kernel unwinder"
 	default UNWINDER_PROLOGUE if KALLSYMS
@@ -23,3 +72,22 @@ config UNWINDER_PROLOGUE
 	  Some of the addresses it reports may be incorrect.
 
 endchoice
+
+config DEBUG_ZBOOT
+	bool "Enable compressed kernel support debugging"
+	depends on DEBUG_KERNEL && SYS_SUPPORTS_ZBOOT
+	default n
+	help
+	  If you want to add compressed kernel support to a new board, and the
+	  board supports uart16550 compatible serial port, please select
+	  SYS_SUPPORTS_ZBOOT_UART16550 for your board and enable this option to
+	  debug it.
+
+	  If your board doesn't support uart16550 compatible serial port, you
+	  can try to select SYS_SUPPORTS_ZBOOT and use the other methods to
+	  debug it. for example, add a new serial port support just as
+	  arch/loongarch/boot/compressed/uart-16550.c does.
+
+	  After the compressed kernel support works, please disable this option
+	  to reduce the kernel image size and speed up the booting procedure a
+	  little.

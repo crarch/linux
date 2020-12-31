@@ -45,6 +45,12 @@ struct screen_info screen_info;
 char __initdata arcs_cmdline[COMMAND_LINE_SIZE];
 static char __initdata command_line[COMMAND_LINE_SIZE];
 
+#ifdef CONFIG_CMDLINE_BOOL
+static const char builtin_cmdline[] __initconst = CONFIG_CMDLINE;
+#else
+static const char builtin_cmdline[] __initconst = "";
+#endif
+
 static int num_standard_resources;
 static struct resource *standard_resources;
 
@@ -239,6 +245,16 @@ static void __init bootcmdline_append(const char *s, size_t max)
 
 static void __init bootcmdline_init(char **cmdline_p)
 {
+	/*
+	 * If CMDLINE_OVERRIDE is enabled then initializing the command line is
+	 * trivial - we simply use the built-in command line unconditionally &
+	 * unmodified.
+	 */
+	if (IS_ENABLED(CONFIG_CMDLINE_OVERRIDE)) {
+		strlcpy(boot_command_line, builtin_cmdline, COMMAND_LINE_SIZE);
+		return;
+	}
+
 	boot_command_line[0] = 0;
 
 	/*
@@ -246,6 +262,13 @@ static void __init bootcmdline_init(char **cmdline_p)
 	 * filled arcs_cmdline with arguments from the bootloader.
 	 */
 	bootcmdline_append(arcs_cmdline, COMMAND_LINE_SIZE);
+
+	/*
+	 * If the user specified a built-in command line & we didn't already
+	 * prepend it, we append it to boot_command_line here.
+	 */
+	if (IS_ENABLED(CONFIG_CMDLINE_BOOL))
+		bootcmdline_append(builtin_cmdline, COMMAND_LINE_SIZE);
 
 	strlcpy(command_line, boot_command_line, COMMAND_LINE_SIZE);
 	*cmdline_p = command_line;
