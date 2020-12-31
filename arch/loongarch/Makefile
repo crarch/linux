@@ -3,6 +3,9 @@
 # Author: Huacai Chen <chenhuacai@loongson.cn>
 # Copyright (C) 2020 Loongson Technology Corporation Limited
 
+archscripts: scripts_basic
+	$(Q)$(MAKE) $(build)=arch/loongarch/tools elf-entry
+
 #
 # Select the object file format to substitute into the linker script.
 #
@@ -31,6 +34,7 @@ cflags-y		+= -mabi=lp64
 endif
 
 all-y			:= vmlinux
+all-$(CONFIG_SYS_SUPPORTS_ZBOOT)+= vmlinuz
 
 #
 # GCC uses -G0 -mabicalls -fpic as default.  We don't want PIC in the kernel
@@ -49,6 +53,15 @@ KBUILD_CFLAGS_MODULE		+= -fno-plt -Wa,-mla-global-with-abs,-mla-local-with-abs
 cflags-y += -ffreestanding
 
 #
+# Kernel compression
+#
+ifdef CONFIG_SYS_SUPPORTS_ZBOOT
+KBUILD_IMAGE	= vmlinuz
+else
+KBUILD_IMAGE	= vmlinux
+endif
+
+#
 # Board-dependent options and extra files
 #
 include arch/loongarch/Kbuild.platforms
@@ -57,13 +70,15 @@ ifdef CONFIG_PHYSICAL_START
 load-y				= $(CONFIG_PHYSICAL_START)
 endif
 
+entry-y				= $(shell $(objtree)/arch/loongarch/tools/elf-entry vmlinux)
 drivers-$(CONFIG_PCI)		+= arch/loongarch/pci/
 
 KBUILD_AFLAGS	+= $(cflags-y)
 KBUILD_CFLAGS	+= $(cflags-y)
 KBUILD_CPPFLAGS += -DVMLINUX_LOAD_ADDRESS=$(load-y)
 
-bootvars-y	= VMLINUX_LOAD_ADDRESS=$(load-y) PLATFORM="$(platform-y)"
+bootvars-y	= VMLINUX_LOAD_ADDRESS=$(load-y) \
+		  VMLINUX_ENTRY_ADDRESS=$(entry-y) PLATFORM="$(platform-y)"
 
 ifdef CONFIG_64BIT
 bootvars-y	+= ADDR_BITS=64
@@ -99,6 +114,10 @@ vdso_install:
 # boot image targets (arch/loongarch/boot/)
 boot-y := vmlinux.bin
 
+# compressed boot image targets (arch/loongarch/boot/compressed/)
+bootz-y			:= vmlinuz
+bootz-y			+= vmlinuz.bin
+
 all:	$(all-y)
 
 # boot
@@ -106,15 +125,36 @@ $(boot-y): vmlinux FORCE
 	$(Q)$(MAKE) $(build)=arch/loongarch/boot VMLINUX=vmlinux \
 		$(bootvars-y) arch/loongarch/boot/$@
 
+ifdef CONFIG_SYS_SUPPORTS_ZBOOT
+# boot/compressed
+$(bootz-y): vmlinux FORCE
+	$(Q)$(MAKE) $(build)=arch/loongarch/boot/compressed \
+		$(bootvars-y) 64bit-bfd=$(64bit-bfd) $@
+else
+vmlinuz: FORCE
+	@echo '   CONFIG_SYS_SUPPORTS_ZBOOT is not enabled'
+	/bin/false
+endif
+
 CLEAN_FILES += vmlinux
 
 install:
 	$(Q)install -D -m 755 vmlinux $(INSTALL_PATH)/vmlinux-$(KERNELRELEASE)
+ifdef CONFIG_SYS_SUPPORTS_ZBOOT
+	$(Q)install -D -m 755 vmlinuz $(INSTALL_PATH)/vmlinuz-$(KERNELRELEASE)
+endif
 	$(Q)install -D -m 644 .config $(INSTALL_PATH)/config-$(KERNELRELEASE)
 	$(Q)install -D -m 644 System.map $(INSTALL_PATH)/System.map-$(KERNELRELEASE)
+
+archclean:
+	$(Q)$(MAKE) $(clean)=arch/loongarch/boot
+	$(Q)$(MAKE) $(clean)=arch/loongarch/boot/compressed
+	$(Q)$(MAKE) $(clean)=arch/loongarch/tools
 
 define archhelp
 	echo '  install              - install kernel into $(INSTALL_PATH)'
 	echo '  vmlinux.bin          - Raw binary boot image'
+	echo '  vmlinuz              - Compressed boot(zboot) image'
+	echo '  vmlinuz.bin          - Raw binary zboot image'
 	echo
 endef
