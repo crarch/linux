@@ -42,6 +42,7 @@
 #include <asm/sections.h>
 #include <asm/siginfo.h>
 #include <asm/tlb.h>
+#include <asm/watch.h>
 #include <asm/mmu_context.h>
 #include <asm/types.h>
 #include <asm/stacktrace.h>
@@ -442,9 +443,44 @@ out_sigsegv:
 	goto out;
 }
 
+/* Set CSR.FWPS.skip and CSR.LLBCTL.KLO */
+static inline void watch_reset_skip_and_llsc(void)
+{
+	unsigned long fwps;
+
+	fwps = csr_readq(LOONGARCH_CSR_FWPS);
+	csr_writeq(0x10000 | fwps, LOONGARCH_CSR_FWPS);
+	csr_writel(0x4, LOONGARCH_CSR_LLBCTL);
+}
+
 asmlinkage void noinstr do_watch(struct pt_regs *regs)
 {
-	pr_warn("Hardware watch point handler not implemented!\n");
+	irqentry_state_t state = irqentry_enter(regs);
+
+	if (test_tsk_thread_flag(current, TIF_LOAD_WATCH)) {
+		if (current->thread.single_step) {
+			int llbit = (csr_readq(LOONGARCH_CSR_LLBCTL) & 0x1);
+			unsigned long ip = regs->csr_era;
+
+			if (llbit) {
+				watch_reset_skip_and_llsc();
+			} else if (ip == current->thread.single_step) {
+				csr_writeq(0x10000 | csr_readq(LOONGARCH_CSR_FWPS), LOONGARCH_CSR_FWPS);
+			} else {
+				loongarch_read_watch_registers(regs);
+				force_sig(SIGTRAP);
+			}
+		} else {
+			loongarch_read_watch_registers(regs);
+			force_sig(SIGTRAP);
+		}
+	} else {
+		if (notify_die(DIE_TRAP, "Break", regs, 0,
+			       current->thread.trap_nr, SIGTRAP) != NOTIFY_STOP)
+			loongarch_clear_watch_registers();
+	}
+
+	irqentry_exit(regs, state);
 }
 
 asmlinkage void noinstr do_ri(struct pt_regs *regs)
