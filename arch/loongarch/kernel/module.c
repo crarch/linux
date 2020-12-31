@@ -10,6 +10,7 @@
 
 #include <linux/moduleloader.h>
 #include <linux/elf.h>
+#include <linux/ftrace.h>
 #include <linux/mm.h>
 #include <linux/numa.h>
 #include <linux/vmalloc.h>
@@ -18,7 +19,7 @@
 #include <linux/string.h>
 #include <linux/kernel.h>
 #include <asm/alternative.h>
-
+#include <asm/inst.h>
 #include <asm/unwind.h>
 
 static int rela_stack_push(s64 stack_value, s64 *rela_stack, size_t *rela_stack_top)
@@ -666,7 +667,8 @@ int module_finalize(const Elf_Ehdr *hdr,
 		    struct module *mod)
 {
 	char *secstrings;
-	const Elf_Shdr *s, *orc = NULL, *orc_ip = NULL, *alt = NULL;
+	const Elf_Shdr *s, *orc = NULL, *orc_ip = NULL, *alt = NULL,
+		*ftrace_tramp = NULL;
 
 	secstrings = (void *)hdr + sechdrs[hdr->e_shstrndx].sh_offset;
 
@@ -677,6 +679,8 @@ int module_finalize(const Elf_Ehdr *hdr,
 			orc = s;
 		if (!strcmp(".orc_unwind_ip", secstrings + s->sh_name))
 			orc_ip = s;
+		if (!strcmp(".ftrace_tramp", secstrings + s->sh_name))
+			ftrace_tramp = s;
 	}
 
 	if (alt) {
@@ -688,6 +692,16 @@ int module_finalize(const Elf_Ehdr *hdr,
 	if (orc && orc_ip)
 		unwind_module_init(mod, (void *)orc_ip->sh_addr, orc_ip->sh_size,
 				   (void *)orc->sh_addr, orc->sh_size);
+
+	if (ftrace_tramp) {
+		/* apply dynamic ftrace trampoline */
+		int res;
+		void *fseg = (void *)ftrace_tramp->sh_addr;
+
+		res = apply_ftrace_tramp(mod, fseg, ftrace_tramp->sh_size);
+		if (res)
+			return res;
+	}
 
 	return 0;
 }

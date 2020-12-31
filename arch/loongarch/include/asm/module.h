@@ -16,6 +16,18 @@ struct mod_arch_specific {
 	int *orc_unwind_ip;
 	struct orc_entry *orc_unwind;
 #endif
+#ifdef CONFIG_DYNAMIC_FTRACE
+	void *ftrace_trampolines[1 + CONFIG_DYNAMIC_FTRACE_WITH_REGS];
+#endif
 };
+
+#ifndef CONFIG_DYNAMIC_FTRACE
+static inline int apply_ftrace_tramp(struct module *mod, void *addr, size_t size)
+{
+	return 0;
+}
+#else
+extern int apply_ftrace_tramp(struct module *mod, void *addr, size_t size);
+#endif
 
 #endif /* _ASM_MODULE_H */

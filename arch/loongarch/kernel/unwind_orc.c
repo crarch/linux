@@ -435,6 +435,17 @@ bool unwind_next_frame(struct unwind_state *state)
 		goto err;
 	}
 
+#ifdef CONFIG_FUNCTION_TRACER
+	if ((unsigned long)&ftrace_call == state->pc) {
+		regs = (struct pt_regs *)state->sp;
+		state->pc = regs->csr_era;
+		state->ra = regs->regs[1];
+		state->sp += sizeof(struct pt_regs);
+		preempt_enable();
+		return true;
+	}
+#endif
+
 	switch (orc->type) {
 	case ORC_TYPE_CALL:
 		if (orc->ra_reg == ORC_REG_PREV_SP) {

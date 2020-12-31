@@ -15,15 +15,30 @@
 #include <linux/mm.h>
 #include <linux/signal.h>
 #include <linux/sched.h>
+#include <linux/debugfs.h>
 #include <linux/perf_event.h>
 
 #include <asm/asm.h>
 #include <asm/branch.h>
 #include <asm/byteorder.h>
+#include <asm/debug.h>
 #include <asm/fpu.h>
 #include <asm/inst.h>
 
 #include "access-helper.h"
+
+enum {
+	UNALIGNED_ACTION_QUIET,
+	UNALIGNED_ACTION_SIGNAL,
+	UNALIGNED_ACTION_SHOW,
+};
+#ifdef CONFIG_DEBUG_FS
+static u32 unaligned_instructions;
+static u32 unaligned_action;
+#else
+#define unaligned_action UNALIGNED_ACTION_QUIET
+#endif
+extern void show_registers(struct pt_regs *regs);
 
 static inline void write_fpr(unsigned int fd, unsigned long value)
 {
@@ -352,6 +367,11 @@ static void emulate_load_store_insn(struct pt_regs *regs, void __user *addr, uns
 	} else
 		goto sigbus;
 
+
+#ifdef CONFIG_DEBUG_FS
+	unaligned_instructions++;
+#endif
+
 	compute_return_era(regs);
 	return;
 
@@ -379,6 +399,9 @@ asmlinkage void noinstr do_ade(struct pt_regs *regs)
 {
 	irqentry_state_t state = irqentry_enter(regs);
 
+	if (unaligned_action == UNALIGNED_ACTION_SHOW)
+		show_registers(regs);
+
 	die_if_kernel("Kernel ade access", regs);
 	force_sig_fault(SIGBUS, BUS_ADRERR, (void __user *)regs->csr_badvaddr);
 
@@ -400,6 +423,10 @@ asmlinkage void noinstr do_ale(struct pt_regs *regs)
 
 	if (user_mode(regs) && !test_thread_flag(TIF_FIXADE))
 		goto sigbus;
+	if (unaligned_action == UNALIGNED_ACTION_SIGNAL)
+		goto sigbus;
+	if (unaligned_action == UNALIGNED_ACTION_SHOW)
+		show_registers(regs);
 
 	pc = (unsigned int *)exception_era(regs);
 
@@ -414,3 +441,15 @@ sigbus:
 out:
 	irqentry_exit(regs, state);
 }
+
+#ifdef CONFIG_DEBUG_FS
+static int __init debugfs_unaligned(void)
+{
+	debugfs_create_u32("unaligned_instructions", S_IRUGO,
+			       loongarch_debugfs_dir, &unaligned_instructions);
+	debugfs_create_u32("unaligned_action", S_IRUGO | S_IWUSR,
+			       loongarch_debugfs_dir, &unaligned_action);
+	return 0;
+}
+arch_initcall(debugfs_unaligned);
+#endif

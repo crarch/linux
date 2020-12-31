@@ -10,8 +10,12 @@
  */
 #ifndef _ASM_INST_H
 #define _ASM_INST_H
+#include <linux/types.h>
 
 #include <asm/asm.h>
+#include <asm/errno.h>
+#include <asm/ptrace.h>
+
 #include <uapi/asm/inst.h>
 
 /* HACHACHAHCAHC ...  */
@@ -258,7 +262,95 @@ do {                                                        \
 
 #define LOONGARCH_INSN_SIZE	sizeof(union loongarch_instruction)
 
+enum loongarch_gpr {
+	LOONGARCH_GPR_ZERO = 0,
+	LOONGARCH_GPR_RA = 1,
+	LOONGARCH_GPR_TP = 2,
+	LOONGARCH_GPR_SP = 3,
+	LOONGARCH_GPR_A0 = 4,
+	LOONGARCH_GPR_A1,
+	LOONGARCH_GPR_A2,
+	LOONGARCH_GPR_A3,
+	LOONGARCH_GPR_A4,
+	LOONGARCH_GPR_A5,
+	LOONGARCH_GPR_A6,
+	LOONGARCH_GPR_A7,
+	LOONGARCH_GPR_V0 = 4,
+	LOONGARCH_GPR_V1 = 5,
+	LOONGARCH_GPR_T0 = 12,
+	LOONGARCH_GPR_T1,
+	LOONGARCH_GPR_T2,
+	LOONGARCH_GPR_T3,
+	LOONGARCH_GPR_T4,
+	LOONGARCH_GPR_T5,
+	LOONGARCH_GPR_T6,
+	LOONGARCH_GPR_T7,
+	LOONGARCH_GPR_T8,
+	LOONGARCH_GPR_FP = 22,
+	LOONGARCH_GPR_S0 = 23,
+	LOONGARCH_GPR_S1,
+	LOONGARCH_GPR_S2,
+	LOONGARCH_GPR_S3,
+	LOONGARCH_GPR_S4,
+	LOONGARCH_GPR_S5,
+	LOONGARCH_GPR_S6,
+	LOONGARCH_GPR_S7,
+	LOONGARCH_GPR_S8,
+	LOONGARCH_GPR_MAX
+};
+
 #define INSN_NOP 0x03400000
+#define INSN_BREAK 0x0002a000
+
+#define ADDR_IMMMASK_ADDU16ID	0x00000000FFFF0000
+#define ADDR_IMMMASK_LU32ID	0x000FFFFF00000000
+#define ADDR_IMMMASK_LU52ID	0xFFF0000000000000
+
+#define ADDR_IMMSHIFT_ADDU16ID	16
+#define ADDR_IMMSHIFT_LU32ID	32
+#define ADDR_IMMSHIFT_LU52ID	52
+
+#define ADDR_IMM(addr, INSN)	((addr & ADDR_IMMMASK_##INSN) >> ADDR_IMMSHIFT_##INSN)
+
+static inline bool cond_beqz(struct pt_regs *regs, int rj)
+{
+	return regs->regs[rj] == 0;
+}
+
+static inline bool cond_bnez(struct pt_regs *regs, int rj)
+{
+	return regs->regs[rj] != 0;
+}
+
+static inline bool cond_beq(struct pt_regs *regs, int rj, int rd)
+{
+	return regs->regs[rj] == regs->regs[rd];
+}
+
+static inline bool cond_bne(struct pt_regs *regs, int rj, int rd)
+{
+	return regs->regs[rj] != regs->regs[rd];
+}
+
+static inline bool cond_blt(struct pt_regs *regs, int rj, int rd)
+{
+	return (long)regs->regs[rj] < (long)regs->regs[rd];
+}
+
+static inline bool cond_bge(struct pt_regs *regs, int rj, int rd)
+{
+	return (long)regs->regs[rj] >= (long)regs->regs[rd];
+}
+
+static inline bool cond_bltu(struct pt_regs *regs, int rj, int rd)
+{
+	return regs->regs[rj] < regs->regs[rd];
+}
+
+static inline bool cond_bgeu(struct pt_regs *regs, int rj, int rd)
+{
+	return regs->regs[rj] >= regs->regs[rd];
+}
 
 static inline bool is_branch_insn(union loongarch_instruction insn)
 {
@@ -271,5 +363,31 @@ static inline bool is_pc_insn(union loongarch_instruction insn)
 	return insn.reg1i20_format.opcode >= pcaddi_op &&
 			insn.reg1i20_format.opcode <= pcaddu18i_op;
 }
+
+unsigned long bs_dest_16(unsigned long now, unsigned int si);
+unsigned long bs_dest_21(unsigned long now, unsigned int h, unsigned int l);
+unsigned long bs_dest_26(unsigned long now, unsigned int h, unsigned int l);
+
+int simu_branch(struct pt_regs *regs, union loongarch_instruction insn);
+int simu_pc(struct pt_regs *regs, union loongarch_instruction insn);
+
+int larch_insn_read(void *addr, u32 *insnp);
+int larch_insn_write(void *addr, u32 insn);
+int larch_insn_patch_text(void *addr, u32 insn);
+
+u32 larch_insn_gen_nop(void);
+u32 larch_insn_gen_b(unsigned long pc, unsigned long dest);
+u32 larch_insn_gen_bl(unsigned long pc, unsigned long dest);
+
+u32 larch_insn_gen_addu16id(enum loongarch_gpr rd, enum loongarch_gpr rj, int imm);
+u32 larch_insn_gen_lu32id(enum loongarch_gpr rd, int imm);
+u32 larch_insn_gen_lu52id(enum loongarch_gpr rd, enum loongarch_gpr rj, int imm);
+
+u32 larch_insn_gen_jirl(enum loongarch_gpr rd, enum loongarch_gpr rj,
+			unsigned long pc, unsigned long dest);
+
+u32 larch_insn_gen_or(enum loongarch_gpr rd, enum loongarch_gpr rj,
+			enum loongarch_gpr rk);
+u32 larch_insn_gen_move(enum loongarch_gpr rd, enum loongarch_gpr rj);
 
 #endif /* _ASM_INST_H */

@@ -12,6 +12,7 @@
 #include <linux/console.h>
 #include <linux/highmem.h>
 #include <linux/pfn.h>
+#include <linux/debugfs.h>
 #include <linux/kexec.h>
 #include <linux/sizes.h>
 #include <linux/device.h>
@@ -26,6 +27,7 @@
 #include <asm/bugs.h>
 #include <asm/cache.h>
 #include <asm/cpu.h>
+#include <asm/debug.h>
 #include <asm/dma.h>
 #include <asm/pgalloc.h>
 #include <asm/sections.h>
@@ -705,4 +707,19 @@ void __init __dt_setup_arch(void *bph)
 {
 	early_init_dt_scan(bph);
 }
+#endif
+
+#ifdef CONFIG_DEBUG_FS
+struct dentry *loongarch_debugfs_dir;
+static int __init debugfs_loongarch(void)
+{
+	struct dentry *d;
+
+	d = debugfs_create_dir("loongarch", NULL);
+	if (!d)
+		return -ENOMEM;
+	loongarch_debugfs_dir = d;
+	return 0;
+}
+arch_initcall(debugfs_loongarch);
 #endif

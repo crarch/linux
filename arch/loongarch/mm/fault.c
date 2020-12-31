@@ -45,6 +45,15 @@ static void __kprobes __do_page_fault(struct pt_regs *regs, unsigned long write,
 
 	static DEFINE_RATELIMIT_STATE(ratelimit_state, 5 * HZ, 10);
 
+#ifdef CONFIG_KPROBES
+	/*
+	 * This is to notify the fault handler of the kprobes.
+	 */
+	if (notify_die(DIE_PAGE_FAULT, "page fault", regs, -1,
+		       current->thread.trap_nr, SIGSEGV) == NOTIFY_STOP)
+		return;
+#endif
+
 	si_code = SEGV_MAPERR;
 
 	if (user_mode(regs) && (address & __UA_LIMIT))
