@@ -10,11 +10,13 @@
 #include <linux/initrd.h>
 #include <linux/root_dev.h>
 #include <linux/console.h>
+#include <linux/highmem.h>
 #include <linux/pfn.h>
 #include <linux/kexec.h>
 #include <linux/sizes.h>
 #include <linux/device.h>
 #include <linux/dma-map-ops.h>
+#include <linux/of_fdt.h>
 #include <linux/crash_dump.h>
 #include <linux/swiotlb.h>
 
@@ -30,6 +32,8 @@
 #include <asm/setup.h>
 #include <asm/smp.h>
 #include <asm/unwind.h>
+
+#include <boot_param.h>
 
 DEFINE_PER_CPU(unsigned long, kernelsp);
 unsigned long fw_arg0, fw_arg1, fw_arg2, fw_arg3;
@@ -166,6 +170,75 @@ static unsigned long __init init_initrd(void)
 #define finalize_initrd()	do {} while (0)
 
 #endif
+
+static void __init dt_bootmem_init(void)
+{
+	phys_addr_t ramstart, ramend;
+	unsigned long start, end;
+	int i;
+
+	ramstart = memblock_start_of_DRAM();
+	ramend = memblock_end_of_DRAM();
+
+	/*
+	 * Sanity check any INITRD first. We don't take it into account
+	 * for bootmem setup initially, rely on the end-of-kernel-code
+	 * as our memory range starting point. Once bootmem is inited we
+	 * will reserve the area used for the initrd.
+	 */
+	init_initrd();
+
+	/* Reserve memory occupied by kernel. */
+	memblock_reserve(__pa_symbol(&_text),
+			__pa_symbol(&_end) - __pa_symbol(&_text));
+
+	/*
+	 * Reserve any memory between the start of RAM and PHYS_OFFSET
+	 */
+	if (ramstart > PHYS_OFFSET)
+		memblock_reserve(PHYS_OFFSET, ramstart - PHYS_OFFSET);
+
+	if (PFN_UP(ramstart) > ARCH_PFN_OFFSET) {
+		pr_info("Wasting %lu bytes for tracking %lu unused pages\n",
+			(unsigned long)((PFN_UP(ramstart) - ARCH_PFN_OFFSET) * sizeof(struct page)),
+			(unsigned long)(PFN_UP(ramstart) - ARCH_PFN_OFFSET));
+	}
+
+	min_low_pfn = ARCH_PFN_OFFSET;
+	max_pfn = PFN_DOWN(ramend);
+	for_each_mem_pfn_range(i, MAX_NUMNODES, &start, &end, NULL) {
+		/*
+		 * Skip highmem here so we get an accurate max_low_pfn if low
+		 * memory stops short of high memory.
+		 * If the region overlaps HIGHMEM_START, end is clipped so
+		 * max_pfn excludes the highmem portion.
+		 */
+		if (start >= PFN_DOWN(HIGHMEM_START))
+			continue;
+		if (end > PFN_DOWN(HIGHMEM_START))
+			end = PFN_DOWN(HIGHMEM_START);
+		if (end > max_low_pfn)
+			max_low_pfn = end;
+	}
+
+	if (min_low_pfn >= max_low_pfn)
+		panic("Incorrect memory mapping !!!");
+
+	if (max_pfn > PFN_DOWN(HIGHMEM_START)) {
+#ifdef CONFIG_HIGHMEM
+		highstart_pfn = PFN_DOWN(HIGHMEM_START);
+		highend_pfn = max_pfn;
+#else
+		max_low_pfn = PFN_DOWN(HIGHMEM_START);
+		max_pfn = max_low_pfn;
+#endif
+	}
+
+	/*
+	 * Reserve initrd memory if needed.
+	 */
+	finalize_initrd();
+}
 
 static int usermem __initdata;
 
@@ -454,9 +527,14 @@ static void __init arch_mem_init(char **cmdline_p)
 
 	check_kernel_sections_mem();
 
+	early_init_fdt_reserve_self();
+	early_init_fdt_scan_reserved_mem();
+
 #ifndef CONFIG_NUMA
 	memblock_set_node(0, PHYS_ADDR_MAX, &memblock.memory, 0);
 #endif
+	if (loongson_fdt_blob)
+		dt_bootmem_init();
 
 	memblock_set_current_limit(PFN_PHYS(max_low_pfn));
 
@@ -474,6 +552,8 @@ static void __init arch_mem_init(char **cmdline_p)
 		reserve_crashm_region(node, start_pfn, end_pfn);
 		reserve_oldmem_region(node, start_pfn, end_pfn);
 	}
+
+	device_tree_init();
 
 	/*
 	 * In order to reduce the possibility of kernel panic when failed to
@@ -617,3 +697,12 @@ void __init setup_arch(char **cmdline_p)
 
 	unwind_init();
 }
+
+#ifdef CONFIG_USE_OF
+unsigned long fw_passed_dtb;
+
+void __init __dt_setup_arch(void *bph)
+{
+	early_init_dt_scan(bph);
+}
+#endif

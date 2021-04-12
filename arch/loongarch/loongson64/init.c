@@ -29,6 +29,8 @@
 struct loongson_board_info b_info;
 static const char dmi_empty_string[] = "        ";
 
+extern void *loongson_fdt_blob;
+
 static const char *dmi_string_parse(const struct dmi_header *dm, u8 s)
 {
 	const u8 *bp = ((u8 *) dm) + dm->length;

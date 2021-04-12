@@ -91,6 +91,8 @@ struct loongson_system_configuration {
 	u64 vgabios_addr;
 };
 
+extern void *loongson_fdt_blob;
+extern u32 __dtb_loongson3_ls7a_begin[];
 extern struct boot_params *efi_bp;
 extern struct loongson_board_info b_info;
 extern struct loongsonlist_mem_map *loongson_mem_map;

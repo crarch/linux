@@ -21,12 +21,14 @@ struct boot_params *efi_bp;
 struct loongsonlist_mem_map *loongson_mem_map;
 struct loongsonlist_vbios *pvbios;
 struct loongson_system_configuration loongson_sysconf;
-EXPORT_SYMBOL(loongson_sysconf);
 
 u64 loongson_chipcfg[MAX_PACKAGES];
 u64 loongson_chiptemp[MAX_PACKAGES];
 u64 loongson_freqctrl[MAX_PACKAGES];
 unsigned long long smp_group[MAX_PACKAGES];
+
+void *loongson_fdt_blob;
+EXPORT_SYMBOL(loongson_sysconf);
 
 static void __init register_addrs_set(u64 *registers, const u64 addr, int num)
 {
