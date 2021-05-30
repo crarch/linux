@@ -252,4 +252,16 @@ do {                                                        \
 #define StoreW(addr, value, res)	_StoreW(addr, value, res)
 #define StoreDW(addr, value, res)	_StoreDW(addr, value, res)
 
+static inline bool is_branch_insn(union loongarch_instruction insn)
+{
+	return insn.reg1i21_format.opcode >= beqz_op &&
+			insn.reg1i21_format.opcode <= bgeu_op;
+}
+
+static inline bool is_pc_insn(union loongarch_instruction insn)
+{
+	return insn.reg1i20_format.opcode >= pcaddi_op &&
+			insn.reg1i20_format.opcode <= pcaddu18i_op;
+}
+
 #endif /* _ASM_INST_H */
