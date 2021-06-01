@@ -264,9 +264,9 @@ void setup_tlb_handler(void)
 		set_handler(EXCCODE_TLBL * VECSIZE, handle_tlb_load, VECSIZE);
 		set_handler(EXCCODE_TLBS * VECSIZE, handle_tlb_store, VECSIZE);
 		set_handler(EXCCODE_TLBM * VECSIZE, handle_tlb_modify, VECSIZE);
-		set_handler(EXCCODE_TLBPE * VECSIZE, handle_tlb_protect, VECSIZE);
 		set_handler(EXCCODE_TLBNR * VECSIZE, handle_tlb_protect, VECSIZE);
 		set_handler(EXCCODE_TLBNX * VECSIZE, handle_tlb_protect, VECSIZE);
+		set_handler(EXCCODE_TLBPE * VECSIZE, handle_tlb_protect, VECSIZE);
 		run_once++;
 	}
 }
