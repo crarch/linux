@@ -8,7 +8,8 @@ extra-y		:= head.o vmlinux.lds
 obj-y		+= cpu-probe.o elf.o entry.o genex.o idle.o irq.o \
 		   process.o ptrace.o reset.o setup.o signal.o io.o \
 		   syscall.o time.o topology.o traps.o unaligned.o \
-		   cmdline.o switch.o cacheinfo.o cmpxchg.o vdso.o
+		   cmdline.o switch.o cacheinfo.o cmpxchg.o vdso.o \
+		   alternative.o
 
 obj-$(CONFIG_ACPI)		+= acpi.o
 obj-$(CONFIG_EFI) 		+= efi.o

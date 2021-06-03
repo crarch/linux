@@ -19,7 +19,9 @@
 #include <linux/swiotlb.h>
 
 #include <asm/addrspace.h>
+#include <asm/alternative.h>
 #include <asm/bootinfo.h>
+#include <asm/bugs.h>
 #include <asm/cache.h>
 #include <asm/cpu.h>
 #include <asm/dma.h>
@@ -66,6 +68,11 @@ static struct resource bss_resource = { .name = "Kernel bss", };
 
 unsigned long __kaslr_offset __ro_after_init;
 EXPORT_SYMBOL(__kaslr_offset);
+
+void __init check_bugs(void)
+{
+	alternative_instructions();
+}
 
 static void *detect_magic __initdata = detect_memory_region;
 

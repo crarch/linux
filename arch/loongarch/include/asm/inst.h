@@ -72,6 +72,10 @@
 #define I_FMA_FFMT_SFT	0
 #define LOONGARCHInst_FMA_FFMT(x) (LOONGARCHInst(x) & 0x00000003)
 
+#define Inst_UncondBranchSIMM(x) \
+	((int)((((LOONGARCHInst(x) & 0x3ff) | ((LOONGARCHInst(x) & 0x200) ? 0xfffffc00 : 0)) << 16) \
+	| ((LOONGARCHInst(x) & 0x3fffc00) >> 10)))
+
 typedef unsigned int loongarch_instruction;
 
 /* Recode table from 16-bit register notation to 32-bit GPR. Do NOT export!!! */
@@ -251,6 +255,10 @@ do {                                                        \
 #define StoreHW(addr, value, res)	_StoreHW(addr, value, res)
 #define StoreW(addr, value, res)	_StoreW(addr, value, res)
 #define StoreDW(addr, value, res)	_StoreDW(addr, value, res)
+
+#define LOONGARCH_INSN_SIZE	sizeof(union loongarch_instruction)
+
+#define INSN_NOP 0x03400000
 
 static inline bool is_branch_insn(union loongarch_instruction insn)
 {
