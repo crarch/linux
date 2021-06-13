@@ -29,6 +29,7 @@
 #include <asm/sections.h>
 #include <asm/setup.h>
 #include <asm/smp.h>
+#include <asm/unwind.h>
 
 DEFINE_PER_CPU(unsigned long, kernelsp);
 unsigned long fw_arg0, fw_arg1, fw_arg2, fw_arg3;
@@ -613,4 +614,6 @@ void __init setup_arch(char **cmdline_p)
 	prefill_possible_map();
 
 	paging_init();
+
+	unwind_init();
 }
