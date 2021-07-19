@@ -119,6 +119,7 @@ config LOONGARCH
 	select SYSCTL_EXCEPTION_TRACE
 	select TRACE_IRQFLAGS_SUPPORT
 	select USE_PERCPU_NUMA_NODE_ID
+	select LOONGARCH_CRC32_SUPPORT
 
 menu "Machine selection"
 
@@ -170,6 +171,10 @@ config SYS_SUPPORTS_HOTPLUG_CPU
 
 config GENERIC_CSUM
 	def_bool y
+
+config LOONGARCH_CRC32_SUPPORT
+	bool
+	default y
 
 config SYS_SUPPORTS_RELOCATABLE
 	bool

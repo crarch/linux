@@ -68,6 +68,8 @@ else
 KBUILD_IMAGE	= vmlinux
 endif
 
+drivers-$(CONFIG_LOONGARCH_CRC32_SUPPORT) += arch/loongarch/crypto/
+
 #
 # Board-dependent options and extra files
 #
