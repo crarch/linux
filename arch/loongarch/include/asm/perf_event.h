@@ -12,5 +12,7 @@
 
 #ifndef __LOONGARCH_PERF_EVENT_H__
 #define __LOONGARCH_PERF_EVENT_H__
-/* Leave it empty here. The file is required by linux/perf_event.h */
+
+#define perf_arch_bpf_user_pt_regs(regs) (struct user_pt_regs *)regs
+
 #endif /* __LOONGARCH_PERF_EVENT_H__ */
