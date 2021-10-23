@@ -101,6 +101,7 @@ config LOONGARCH
 	select HAVE_SYSCALL_TRACEPOINTS
 	select HAVE_TIF_NOHZ
 	select HAVE_VIRT_CPU_ACCOUNTING_GEN if 64BIT || !SMP
+	select IOREMAP_WITH_TLB
 	select IRQ_FORCED_THREADING
 	select MODULES_USE_ELF_RELA if MODULES && 64BIT
 	select MODULES_USE_ELF_REL if MODULES
@@ -248,6 +249,9 @@ config 64BIT
 
 endchoice
 
+config FIX_EARLYCON_MEM
+	def_bool y
+
 config PAGE_SIZE_4KB
 	bool
 
@@ -389,6 +393,9 @@ config CPU_SUPPORTS_LSX
 	bool
 
 config CPU_SUPPORTS_LASX
+	bool
+
+config IOREMAP_WITH_TLB
 	bool
 
 config ARCH_SELECT_MEMORY_MODEL

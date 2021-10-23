@@ -592,11 +592,11 @@ void __init setup_arch(char **cmdline_p)
 	cpu_probe();
 
 	early_init();
+	pagetable_init();
 	bootcmdline_init(cmdline_p);
 
 	init_initrd();
 	platform_init();
-	pagetable_init();
 	finalize_initrd();
 
 	arch_mem_init(cmdline_p);
