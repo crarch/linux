@@ -485,18 +485,18 @@ static struct section *elf_create_reloc_section(struct elf *elf,
 						struct section *base,
 						int reltype);
 
-int elf_add_reloc(struct elf *elf, struct section *sec, unsigned long offset,
-		  unsigned int type, struct symbol *sym, int addend)
+struct reloc *elf_add_reloc(struct elf *elf, struct section *sec, unsigned long offset,
+			    unsigned int type, struct symbol *sym, int addend, struct reloc *prev)
 {
 	struct reloc *reloc;
 
 	if (!sec->reloc && !elf_create_reloc_section(elf, sec, SHT_RELA))
-		return -1;
+		return NULL;
 
 	reloc = malloc(sizeof(*reloc));
 	if (!reloc) {
 		perror("malloc");
-		return -1;
+		return NULL;
 	}
 	memset(reloc, 0, sizeof(*reloc));
 
@@ -506,23 +506,32 @@ int elf_add_reloc(struct elf *elf, struct section *sec, unsigned long offset,
 	reloc->sym = sym;
 	reloc->addend = addend;
 
-	list_add_tail(&reloc->list, &sec->reloc->reloc_list);
-	elf_hash_add(reloc, &reloc->hash, reloc_hash(reloc));
+	if (prev) {
+		prev->next = reloc;
+	} else {
+		list_add_tail(&reloc->list, &sec->reloc->reloc_list);
+		elf_hash_add(reloc, &reloc->hash, reloc_hash(reloc));
+	}
 
 	sec->reloc->sh.sh_size += sec->reloc->sh.sh_entsize;
 	sec->reloc->changed = true;
 
-	return 0;
+	return reloc;
 }
 
-int elf_add_reloc_to_insn(struct elf *elf, struct section *sec,
-			  unsigned long offset, unsigned int type,
-			  struct section *insn_sec, unsigned long insn_off)
+struct reloc *elf_add_reloc_to_insn(struct elf *elf, struct section *sec,
+				    unsigned long offset, unsigned int type,
+				    struct section *insn_sec, unsigned long insn_off,
+				    struct reloc *prev)
 {
 	struct symbol *sym;
 	int addend;
 
-	if (insn_sec->sym) {
+	if (prev) {
+		sym = NULL;
+		addend = insn_off;
+
+	} else if (insn_sec->sym) {
 		sym = insn_sec->sym;
 		addend = insn_off;
 
@@ -542,13 +551,13 @@ int elf_add_reloc_to_insn(struct elf *elf, struct section *sec,
 
 		if (!sym) {
 			WARN("can't find symbol containing %s+0x%lx", insn_sec->name, insn_off);
-			return -1;
+			return NULL;
 		}
 
 		addend = insn_off - sym->offset;
 	}
 
-	return elf_add_reloc(elf, sec, offset, type, sym, addend);
+	return elf_add_reloc(elf, sec, offset, type, sym, addend, prev);
 }
 
 static int read_rel_reloc(struct section *sec, int i, struct reloc *reloc, unsigned int *symndx)
@@ -580,7 +589,7 @@ static int read_rela_reloc(struct section *sec, int i, struct reloc *reloc, unsi
 static int read_relocs(struct elf *elf)
 {
 	struct section *sec;
-	struct reloc *reloc;
+	struct reloc *reloc, *last_reloc;
 	int i;
 	unsigned int symndx;
 	unsigned long nr_reloc, max_reloc = 0, tot_reloc = 0;
@@ -601,6 +610,7 @@ static int read_relocs(struct elf *elf)
 		}
 
 		sec->base->reloc = sec;
+		last_reloc = NULL;
 
 		nr_reloc = 0;
 		for (i = 0; i < sec->sh.sh_size / sec->sh.sh_entsize; i++) {
@@ -630,6 +640,14 @@ static int read_relocs(struct elf *elf)
 				     symndx, sec->name);
 				return -1;
 			}
+
+			if (last_reloc && reloc->offset == last_reloc->offset) {
+				last_reloc->next = reloc;
+				last_reloc = reloc;
+				continue;
+			}
+
+			last_reloc = reloc;
 
 			list_add_tail(&reloc->list, &sec->reloc_list);
 			elf_hash_add(reloc, &reloc->hash, reloc_hash(reloc));
@@ -928,7 +946,7 @@ static int elf_rebuild_rel_reloc_section(struct section *sec)
 
 static int elf_rebuild_rela_reloc_section(struct section *sec)
 {
-	struct reloc *reloc;
+	struct reloc *reloc, *p;
 	int idx = 0;
 	void *buf;
 
@@ -945,14 +963,16 @@ static int elf_rebuild_rela_reloc_section(struct section *sec)
 
 	idx = 0;
 	list_for_each_entry(reloc, &sec->reloc_list, list) {
-		reloc->rela.r_offset = reloc->offset;
-		reloc->rela.r_addend = reloc->addend;
-		reloc->rela.r_info = GELF_R_INFO(reloc->sym->idx, reloc->type);
-		if (!gelf_update_rela(sec->data, idx, &reloc->rela)) {
-			WARN_ELF("gelf_update_rela");
-			return -1;
+		for (p = reloc; p; p = p->next) {
+			p->rela.r_offset = p->offset;
+			p->rela.r_addend = p->addend;
+			p->rela.r_info = GELF_R_INFO(p->sym ? p->sym->idx : 0, p->type);
+			if (!gelf_update_rela(sec->data, idx, &p->rela)) {
+				WARN_ELF("gelf_update_rela");
+				return -1;
+			}
+			idx++;
 		}
-		idx++;
 	}
 
 	return 0;
