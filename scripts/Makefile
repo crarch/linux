@@ -18,10 +18,17 @@ HOSTCFLAGS_sign-file.o = $(shell pkg-config --cflags libcrypto 2> /dev/null)
 HOSTLDLIBS_sign-file = $(shell pkg-config --libs libcrypto 2> /dev/null || echo -lcrypto)
 
 ifdef CONFIG_UNWINDER_ORC
+# Additional ARCH settings for x86
 ifeq ($(ARCH),x86_64)
 ARCH := x86
 endif
-HOSTCFLAGS_sorttable.o += -I$(srctree)/tools/arch/x86/include
+
+# Additional ARCH settings for loongarch
+ifeq ($(ARCH),loongarch64)
+ARCH := loongarch
+endif
+
+HOSTCFLAGS_sorttable.o += -I$(srctree)/tools/arch/$(ARCH)/include
 HOSTCFLAGS_sorttable.o += -DUNWINDER_ORC_ENABLED
 endif
 
