@@ -30,6 +30,9 @@ cflags-y += $(call cc-option, -mno-check-zero-division)
 ifdef CONFIG_64BIT
 ld-emul			= $(64bit-emul)
 cflags-y		+= -mabi=lp64s
+else
+# Chiro: why not use 32bit?
+cflags-y		+= -mabi=ilp32
 endif
 
 all-y			:= vmlinux
@@ -40,9 +43,9 @@ all-y			:= vmlinux
 # use of global pointer optimizations but their use of $r2 conflicts with
 # the current pointer optimization.
 #
-cflags-y			+= -G0 -pipe
+cflags-y			+= -pipe
 cflags-y			+= -msoft-float
-LDFLAGS_vmlinux			+= -G0 -static -n -nostdlib
+LDFLAGS_vmlinux			+= -static -n -nostdlib
 KBUILD_AFLAGS_KERNEL		+= -Wa,-mla-global-with-pcrel
 KBUILD_CFLAGS_KERNEL		+= -Wa,-mla-global-with-pcrel
 KBUILD_AFLAGS_MODULE		+= -Wa,-mla-global-with-abs

@@ -122,10 +122,10 @@ config LOONGARCH
 	select ZONE_DMA32
 
 config 32BIT
-	bool
+	def_bool y
 
 config 64BIT
-	def_bool y
+	def_bool n
 
 config CPU_HAS_FPU
 	bool
