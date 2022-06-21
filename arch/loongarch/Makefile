@@ -9,6 +9,7 @@ KBUILD_DEFCONFIG := loongson3_defconfig
 # Select the object file format to substitute into the linker script.
 #
 64bit-tool-archpref	= loongarch64
+32bit-tool-archpref	= loongarch32
 32bit-bfd		= elf32-loongarch
 64bit-bfd		= elf64-loongarch
 32bit-emul		= elf32loongarch
@@ -17,6 +18,9 @@ KBUILD_DEFCONFIG := loongson3_defconfig
 ifdef CONFIG_64BIT
 tool-archpref		= $(64bit-tool-archpref)
 UTS_MACHINE		:= loongarch64
+else
+tool-archpref		= $(32bit-tool-archpref)
+UTS_MACHINE		:= loongarch32
 endif
 
 ifneq ($(SUBARCH),$(ARCH))
@@ -31,8 +35,8 @@ ifdef CONFIG_64BIT
 ld-emul			= $(64bit-emul)
 cflags-y		+= -mabi=lp64s
 else
-# Chiro: why not use 32bit?
-cflags-y		+= -mabi=ilp32
+ld-emul			= $(32bit-emul)
+cflags-y		+= -mabi=ilp32s
 endif
 
 all-y			:= vmlinux
